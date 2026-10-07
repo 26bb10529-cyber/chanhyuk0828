@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circadian Lab - 내 생체시계 분석 시뮬레이터</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN for Circadian Rhythm & Hormone Curves -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            color: #1e293b;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Glassmorphic & Laboratory Lab Styling */
+        .lab-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(203, 213, 225, 0.6);
+            box-shadow: 0 10px 25px -5px rgba(148, 163, 184, 0.15), 0 8px 10px -6px rgba(148, 163, 184, 0.1);
+        }
+
+        .lab-input {
+            background-color: #f8fafc;
+            border: 1px solid #cbd5e1;
+            transition: all 0.2s ease;
+        }
+        .lab-input:focus {
+            background-color: #ffffff;
+            border-color: #0284c7;
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+            outline: none;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Clock Animations & Design */
+        .clock-face {
+            background: radial-gradient(circle, #ffffff 60%, #e2e8f0 100%);
+            box-shadow: inset 0 0 15px rgba(148, 163, 184, 0.2), 0 10px 25px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Grid Pattern Background for Lab vibe */
+        .bg-grid-pattern {
+            background-size: 30px 30px;
+            background-image: 
+                linear-gradient(to right, rgba(203, 213, 225, 0.25) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(203, 213, 225, 0.25) 1px, transparent 1px);
+        }
+
+        /* Smooth step transition */
+        .step-view {
+            display: none;
+            opacity: 0;
+            transform: translateY(12px);
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+        .step-view.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="bg-grid-pattern min-h-screen flex flex-col justify-between text-slate-800 antialiased">
+
+    <!-- Header / Top Bar -->
+    <header class="w-full bg-slate-900/90 text-white backdrop-blur-md border-b border-slate-700/50 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-cyan-500/20 text-cyan-400 rounded-lg border border-cyan-500/30">
+                    <i data-lucide="clock" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base tracking-wide flex items-center gap-2">
+                        CIRCADIAN LAB <span class="text-xs px-2 py-0.5 bg-cyan-900/60 text-cyan-300 rounded border border-cyan-700/50">v2.5 Pro</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">생체리듬 분석 및 생체시계 정밀 계산 시스템</p>
+                </div>
+            </div>
+            
+            <div id="header-status" class="hidden md:flex items-center gap-4 text-xs font-mono text-slate-300">
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>실험실 모듈 정상</span>
+                </div>
+                <span class="text-slate-600">|</span>
+                <div id="live-time-display" class="text-cyan-400 font-semibold">00:00:00</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dynamic Content Wrapper -->
+    <main class="max-w-5xl mx-auto px-4 py-8 w-full flex-grow">
+
+        <!-- STEP 1: Landing Page -->
+        <section id="step-1" class="step-view active">
+            <div class="lab-card rounded-2xl p-8 md:p-12 text-center max-w-3xl mx-auto relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-sky-400 via-cyan-500 to-blue-600"></div>
+                
+                <div class="inline-flex p-4 bg-sky-50 text-cyan-600 rounded-full mb-6 ring-8 ring-sky-50/50">
+                    <i data-lucide="activity" class="w-12 h-12"></i>
+                </div>
+
+                <h2 class="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">
+                    내 생체시계 알아보기
+                </h2>
+                <p class="text-slate-600 text-base md:text-lg mb-8 leading-relaxed max-w-xl mx-auto">
+                    수면, 빛 노출, 식사 시간, 카페인 섭취 등 일상 생활 습관 데이터를 기반으로 당신의 <strong class="text-cyan-700">생체시계(Circadian Phase)</strong>가 실제 시계와 얼마나 어긋나 있는지 정확히 시뮬레이션합니다.
+                </p>
+
+                <!-- Features list -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10 text-left">
+                    <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80">
+                        <div class="flex items-center gap-2 text-cyan-700 font-semibold mb-1 text-sm">
+                            <i data-lucide="sun" class="w-4 h-4"></i> 빛 & 환경 영향 분석
+                        </div>
+                        <p class="text-xs text-slate-500">아침 햇빛과 야간 블루라이트가 멜라토닌에 미치는 영향 계산</p>
+                    </div>
+                    <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80">
+                        <div class="flex items-center gap-2 text-cyan-700 font-semibold mb-1 text-sm">
+                            <i data-lucide="watch" class="w-4 h-4"></i> 실시간 시계 비교
+                        </div>
+                        <p class="text-xs text-slate-500">실제 표준시와 내 장기 생체시계 간 위상 오차 시각화</p>
+                    </div>
+                    <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80">
+                        <div class="flex items-center gap-2 text-cyan-700 font-semibold mb-1 text-sm">
+                            <i data-lucide="sliders" class="w-4 h-4"></i> 맞춤형 동기화 솔루션
+                        </div>
+                        <p class="text-xs text-slate-500">생체 리듬을 정상으로 되돌리기 위한 단계별 실행 지침 제공</p>
+                    </div>
+                </div>
+
+                <button onclick="goToStep(2)" class="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-lg rounded-xl shadow-lg shadow-cyan-500/25 transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer">
+                    <span>시뮬레이션 스타트</span>
+                    <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- STEP 2: Input Screen (Timeline & Controls) -->
+        <section id="step-2" class="step-view">
+            <div class="lab-card rounded-2xl p-6 md:p-8 max-w-4xl mx-auto">
+                <div class="flex items-center justify-between pb-6 mb-6 border-b border-slate-200">
+                    <div>
+                        <span class="text-xs font-mono font-semibold uppercase tracking-wider text-cyan-600 bg-cyan-50 px-2.5 py-1 rounded">Step 02 / Data Input</span>
+                        <h2 class="text-2xl font-bold text-slate-900 mt-1">생체 데이터 및 생활 습관 입력</h2>
+                    </div>
+                    <div class="text-xs text-slate-500 hidden sm:block">
+                        *정확한 측정을 위해 최근 3일간의 평균적 습관을 선택해 주세요.
+                    </div>
+                </div>
+
+                <form id="bio-form" onsubmit="event.preventDefault(); processAnalysis();" class="space-y-8">
+                    
+                    <!-- 1. 수면 패턴 -->
+                    <div class="bg-slate-50/70 p-5 rounded-xl border border-slate-200">
+                        <h3 class="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="moon" class="w-5 h-5 text-indigo-600"></i> 1. 수면 패턴 (Sleep Schedule)
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-2">취침 시간 (Sleep Time)</label>
+                                <input type="time" id="sleepTime" value="23:30" class="lab-input w-full p-3 rounded-lg text-slate-800 font-mono text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-2">기상 시간 (Wake Time)</label>
+                                <input type="time" id="wakeTime" value="07:30" class="lab-input w-full p-3 rounded-lg text-slate-800 font-mono text-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. 빛 노출 데이터 -->
+                    <div class="bg-slate-50/70 p-5 rounded-xl border border-slate-200">
+                        <h3 class="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="sun" class="w-5 h-5 text-amber-500"></i> 2. 빛 노출 데이터 (Light Exposure)
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <label class="text-xs font-semibold text-slate-700">아침 햇빛 노출 (기상 후 2시간 내)</label>
+                                    <div class="flex items-center gap-1">
+                                        <button type="button" onclick="adjustLight('morningLight', -1)" class="w-6 h-6 flex items-center justify-center rounded bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold transition active:scale-95">-</button>
+                                        <span id="morningLightVal" class="text-xs font-bold text-cyan-600 font-mono w-10 text-center">15분</span>
+                                        <button type="button" onclick="adjustLight('morningLight', 1)" class="w-6 h-6 flex items-center justify-center rounded bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold transition active:scale-95">+</button>
+                                    </div>
+                                </div>
+                                <input type="range" id="morningLight" min="0" max="120" step="1" value="15" 
+                                       oninput="document.getElementById('morningLightVal').innerText = this.value + '분'"
+                                       class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-cyan-600">
+                                <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+                                    <span>0분</span>
+                                    <span>1분 단위 미세조정</span>
+                                    <span>120분</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500 mt-1">야외 산책, 베란다/창가 햇빛 등</p>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <label class="text-xs font-semibold text-slate-700">취침 전 야간 블루라이트/조명 노출</label>
+                                    <div class="flex items-center gap-1">
+                                        <button type="button" onclick="adjustLight('nightLight', -1)" class="w-6 h-6 flex items-center justify-center rounded bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold transition active:scale-95">-</button>
+                                        <span id="nightLightVal" class="text-xs font-bold text-cyan-600 font-mono w-10 text-center">60분</span>
+                                        <button type="button" onclick="adjustLight('nightLight', 1)" class="w-6 h-6 flex items-center justify-center rounded bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold transition active:scale-95">+</button>
+                                    </div>
+                                </div>
+                                <input type="range" id="nightLight" min="0" max="240" step="1" value="60" 
+                                       oninput="document.getElementById('nightLightVal').innerText = this.value + '분'"
+                                       class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-cyan-600">
+                                <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+                                    <span>0분</span>
+                                    <span>1분 단위 미세조정</span>
+                                    <span>240분</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500 mt-1">스마트폰, TV, 밝은 실내 등 취침 전 노출 시간</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. 식사 패턴 및 야식 -->
+                    <div class="bg-slate-50/70 p-5 rounded-xl border border-slate-200">
+                        <h3 class="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="utensils" class="w-5 h-5 text-emerald-600"></i> 3. 식사 시간 (Meal Times & Peripheral Clock)
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">아침 식사</label>
+                                <input type="time" id="breakfastTime" value="08:00" class="lab-input w-full p-2.5 rounded-lg text-slate-800 font-mono text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">저녁 식사</label>
+                                <input type="time" id="dinnerTime" value="19:30" class="lab-input w-full p-2.5 rounded-lg text-slate-800 font-mono text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">야식 여부 (21시 이후)</label>
+                                <select id="lateSnack" class="lab-input w-full p-2.5 rounded-lg text-slate-800 text-sm">
+                                    <option value="none">없음 (식사 종료)</option>
+                                    <option value="light">가벼운 주전부리/음료</option>
+                                    <option value="heavy">무거운 야식 (탄수화물/지방)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. 카페인 & 온도 환경 -->
+                    <div class="bg-slate-50/70 p-5 rounded-xl border border-slate-200">
+                        <h3 class="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="coffee" class="w-5 h-5 text-amber-700"></i> 4. 카페인 & 수면 환경 (Stimulants & Temp)
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-2">오후 2시 이후 카페인 섭취</label>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="caffeine" value="none" class="peer sr-only" checked>
+                                        <div class="p-2.5 text-center rounded-lg border bg-white peer-checked:bg-cyan-50 peer-checked:border-cyan-600 peer-checked:text-cyan-700 text-xs font-medium text-slate-600 transition-all">
+                                            없음
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="caffeine" value="moderate" class="peer sr-only">
+                                        <div class="p-2.5 text-center rounded-lg border bg-white peer-checked:bg-cyan-50 peer-checked:border-cyan-600 peer-checked:text-cyan-700 text-xs font-medium text-slate-600 transition-all">
+                                            1~2잔
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="caffeine" value="high" class="peer sr-only">
+                                        <div class="p-2.5 text-center rounded-lg border bg-white peer-checked:bg-cyan-50 peer-checked:border-cyan-600 peer-checked:text-cyan-700 text-xs font-medium text-slate-600 transition-all">
+                                            3잔 이상/야간
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-2">침실 수면 온도 환경</label>
+                                <select id="roomTemp" class="lab-input w-full p-2.5 rounded-lg text-slate-800 text-sm">
+                                    <option value="cool">적정 온/습도 (18~22℃ 시원함)</option>
+                                    <option value="warm">조금 더움 / 난방 과다 (23℃ 이상)</option>
+                                    <option value="cold">다소 추움 (16℃ 이하)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex items-center justify-between pt-4">
+                        <button type="button" onclick="goToStep(1)" class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600 font-medium text-sm hover:bg-slate-100 transition">
+                            이전으로
+                        </button>
+                        <button type="submit" class="px-8 py-3 bg-cyan-700 hover:bg-cyan-800 text-white font-bold text-sm rounded-xl shadow-md shadow-cyan-700/20 flex items-center gap-2 transition cursor-pointer">
+                            <span>생체시계 계산 및 결과 분석</span>
+                            <i data-lucide="calculator" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- STEP 3: Clock Comparison Display -->
+        <section id="step-3" class="step-view">
+            <div class="space-y-6 max-w-5xl mx-auto">
+                
+                <!-- Status Badge -->
+                <div class="lab-card rounded-2xl p-6 text-center">
+                    <span class="text-xs font-mono font-semibold uppercase tracking-wider text-cyan-600 bg-cyan-50 px-2.5 py-1 rounded">Step 03 / Rhythm Analysis</span>
+                    <h2 class="text-2xl font-bold text-slate-900 mt-2">표준 시계 vs 내 생체시계</h2>
+                    <p class="text-sm text-slate-500 mt-1">입력된 생체 환경 알고리즘을 계산한 두 시계의 시차입니다.</p>
+                </div>
+
+                <!-- Dual Clock Display Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    <!-- Real Clock -->
+                    <div class="lab-card rounded-2xl p-6 flex flex-col items-center relative overflow-hidden border-t-4 border-t-slate-600">
+                        <div class="text-xs font-bold font-mono text-slate-500 tracking-wider mb-2 uppercase flex items-center gap-1.5">
+                            <i data-lucide="globe" class="w-4 h-4"></i> 실제 표준 시계 (Standard Clock)
+                        </div>
+                        <div class="text-2xl font-extrabold text-slate-800 mb-4" id="standard-digital-time">14:00:00</div>
+                        
+                        <!-- Canvas Analog Clock 1 -->
+                        <div class="relative w-48 h-48 my-2">
+                            <canvas id="standardClockCanvas" width="200" height="200" class="w-full h-full"></canvas>
+                        </div>
+
+                        <p class="text-xs text-slate-500 text-center mt-3">
+                            사회적 표준 시간 (24시간 지구 일주 기점)
+                        </p>
+                    </div>
+
+                    <!-- Bio Clock -->
+                    <div class="lab-card rounded-2xl p-6 flex flex-col items-center relative overflow-hidden border-t-4 border-t-cyan-500">
+                        <div class="text-xs font-bold font-mono text-cyan-600 tracking-wider mb-2 uppercase flex items-center gap-1.5">
+                            <i data-lucide="dna" class="w-4 h-4"></i> 내 장기 생체시계 (Biological Clock)
+                        </div>
+                        <div class="text-2xl font-extrabold text-cyan-700 mb-4" id="bio-digital-time">16:15:00</div>
+                        
+                        <!-- Canvas Analog Clock 2 -->
+                        <div class="relative w-48 h-48 my-2">
+                            <canvas id="bioClockCanvas" width="200" height="200" class="w-full h-full"></canvas>
+                        </div>
+
+                        <p class="text-xs text-slate-500 text-center mt-3">
+                            뇌 시교차 상핵(SCN) 및 말초장기가 체감하는 생체 시각
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Analysis Summary Box -->
+                <div class="lab-card rounded-2xl p-6 bg-gradient-to-br from-white to-sky-50/50 border border-sky-100">
+                    <div class="flex items-start gap-4">
+                        <div class="p-3 bg-cyan-600 text-white rounded-xl shrink-0 mt-1">
+                            <i data-lucide="git-compare" class="w-6 h-6"></i>
+                        </div>
+                        <div class="space-y-2 w-full">
+                            <div class="flex items-center justify-between flex-wrap gap-2">
+                                <h3 class="text-lg font-bold text-slate-900" id="phase-shift-title">
+                                    생체시계 위상 측정 결과
+                                </h3>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span id="sync-score-badge" class="px-3 py-1 rounded-full text-xs font-extrabold font-mono bg-cyan-100 text-cyan-900 border border-cyan-300">
+                                        동기화 점수: --점
+                                    </span>
+                                    <span id="phase-shift-badge" class="px-3 py-1 rounded-full text-xs font-bold font-mono bg-amber-100 text-amber-800">
+                                        +1시간 45분 지연됨
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <!-- Score Progress Bar -->
+                            <div class="w-full bg-slate-200 rounded-full h-2.5 my-2">
+                                <div id="sync-score-bar" class="bg-cyan-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+
+                            <p id="phase-shift-description" class="text-sm text-slate-600 leading-relaxed">
+                                분석 중입니다...
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation to Curve & Solution -->
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+                    <button onclick="goToStep(2)" class="w-full sm:w-auto px-5 py-3 rounded-xl border border-slate-300 text-slate-600 font-medium text-sm hover:bg-slate-100 transition">
+                        데이터 다시 입력하기
+                    </button>
+                    <button onclick="showCurveModal()" class="w-full sm:w-auto px-6 py-3 bg-slate-800 hover:bg-slate-900 text-white font-semibold text-sm rounded-xl shadow transition flex items-center justify-center gap-2">
+                        <i data-lucide="line-chart" class="w-4 h-4 text-cyan-400"></i>
+                        <span>24시간 생체리듬 곡선 그래프 비교</span>
+                    </button>
+                    <button onclick="goToStep(4)" class="w-full sm:w-auto px-6 py-3 bg-cyan-700 hover:bg-cyan-800 text-white font-bold text-sm rounded-xl shadow-md shadow-cyan-700/20 transition flex items-center justify-center gap-2 cursor-pointer">
+                        <span>생체리듬 영향 & 호르몬 근거 보기</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 4: Health Impact & Biological Basis (Melatonin, Cortisol, Mini Curves) -->
+        <section id="step-4" class="step-view">
+            <div class="lab-card rounded-2xl p-6 md:p-8 max-w-4xl mx-auto space-y-8">
+                
+                <!-- Section Header -->
+                <div class="text-center max-w-2xl mx-auto">
+                    <span class="text-xs font-mono font-semibold uppercase tracking-wider text-cyan-600 bg-cyan-50 px-2.5 py-1 rounded">Step 04 / Biological Mechanics & Impact</span>
+                    <h2 class="text-2xl md:text-3xl font-bold text-slate-900 mt-2">생체시계 동기화의 과학적 이유</h2>
+                    <p class="text-sm text-slate-600 mt-2">
+                        우리 몸은 24시간 지구 일주 기토대에 맞춰 호르몬과 장기가 오케스트라처럼 협율적으로 작동하도록 설계되어 있습니다.
+                    </p>
+                </div>
+
+                <!-- Core Hormones Mechanics Grid with Mini Graphs -->
+                <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6 rounded-2xl border border-slate-700 space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-700 pb-3 flex-wrap gap-2">
+                        <div class="flex items-center gap-2 text-cyan-400 font-bold text-base">
+                            <i data-lucide="dna" class="w-5 h-5"></i>
+                            <span>생체시계를 조절하는 2대 핵심 호르몬 메커니즘 &amp; 분비 비교 그래프</span>
+                        </div>
+                        <span class="text-[11px] font-mono text-cyan-300 bg-cyan-950/80 px-2.5 py-0.5 rounded border border-cyan-800">
+                            📊 내 데이터 기반 실시간 파동 비교
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                        <!-- Melatonin Card with Mini Curve -->
+                        <div class="bg-slate-800/80 p-4 rounded-xl border border-indigo-500/30 flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between text-indigo-400 font-bold mb-2">
+                                    <span class="flex items-center gap-2"><i data-lucide="moon" class="w-5 h-5"></i> 멜라토닌 (Melatonin)</span>
+                                    <span class="text-[10px] font-mono bg-indigo-900/60 px-2 py-0.5 rounded text-indigo-200">수면/세포재생</span>
+                                </div>
+                                <p class="text-xs text-slate-300 leading-relaxed mb-3">
+                                    밤 9시경 분비가 시작되어 야간 체온을 낮추고 깊은 수면을 유도합니다. 야간 블루라이트에 노출되면 peak 분비량이 저하되고 타임라인이 밀려납니다.
+                                </p>
+                                
+                                <!-- Mini Melatonin Graph Canvas -->
+                                <div class="w-full h-36 bg-slate-900/90 rounded-lg p-2 border border-slate-700/80 mb-3 relative">
+                                    <canvas id="melatoninMiniChart"></canvas>
+                                </div>
+                            </div>
+
+                            <span class="inline-block text-[11px] font-mono bg-indigo-950/80 text-indigo-300 px-2.5 py-1 rounded border border-indigo-800 text-center">
+                                ⚠️ 야간 블루라이트 노출 시 발생량 억제 및 시간 지연
+                            </span>
+                        </div>
+
+                        <!-- Cortisol Card with Mini Curve -->
+                        <div class="bg-slate-800/80 p-4 rounded-xl border border-amber-500/30 flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between text-amber-400 font-bold mb-2">
+                                    <span class="flex items-center gap-2"><i data-lucide="sun" class="w-5 h-5"></i> 코르티솔 (Cortisol)</span>
+                                    <span class="text-[10px] font-mono bg-amber-900/60 px-2 py-0.5 rounded text-amber-200">각성/에너지대사</span>
+                                </div>
+                                <p class="text-xs text-slate-300 leading-relaxed mb-3">
+                                    기상 직후 분비량이 급증(CAR 반응)하여 혈당과 심박수를 올려 신체를 깨웁니다. 아침 햇빛이 부족하면 피크 각성 타임이 왜곡되어 뇌 안개가 지속됩니다.
+                                </p>
+                                
+                                <!-- Mini Cortisol Graph Canvas -->
+                                <div class="w-full h-36 bg-slate-900/90 rounded-lg p-2 border border-slate-700/80 mb-3 relative">
+                                    <canvas id="cortisolMiniChart"></canvas>
+                                </div>
+                            </div>
+
+                            <span class="inline-block text-[11px] font-mono bg-amber-950/80 text-amber-300 px-2.5 py-1 rounded border border-amber-800 text-center">
+                                ☀️ 아침 광선 자극을 통해 피크 분비 타임 리셋
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparison Grid: Risks vs Benefits -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    <!-- Desynchronization Risks -->
+                    <div class="p-6 bg-rose-50/50 rounded-2xl border border-rose-200 space-y-4">
+                        <div class="flex items-center gap-2 text-rose-800 font-bold text-base">
+                            <i data-lucide="alert-triangle" class="w-5 h-5 text-rose-600"></i>
+                            <span>생체시계 교란 시 신체 위험 요소</span>
+                        </div>
+                        <ul class="text-xs text-slate-700 space-y-2.5 leading-relaxed">
+                            <li class="flex items-start gap-2">
+                                <span class="text-rose-500 font-bold">•</span>
+                                <span><strong>신진대사 이상 & 비만:</strong> 야간 인슐린 감수성이 떨어져 동일한 식사량도 체지방으로 축적되기 쉬움.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-rose-500 font-bold">•</span>
+                                <span><strong>수면 관성 & 만성 피로:</strong> 멜라토닌 분비 타임라인 불일치로 아침에 깨어나도 극심한 뇌 안개(Brain Fog) 발생.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-rose-500 font-bold">•</span>
+                                <span><strong>면역력 및 세포 회복 저하:</strong> 깊은 수면 단계 결여로 면역 NK세포 활성도가 감소하여 감염 및 염증에 취약.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-rose-500 font-bold">•</span>
+                                <span><strong>정서 불안 & 무기력증:</strong> 세로토닌 및 호르몬 균형 파괴로 우울감과 집중력 저하 촉진.</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Synchronization Benefits -->
+                    <div class="p-6 bg-emerald-50/50 rounded-2xl border border-emerald-200 space-y-4">
+                        <div class="flex items-center gap-2 text-emerald-800 font-bold text-base">
+                            <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-600"></i>
+                            <span>생체시계 동기화 시 기대 효과</span>
+                        </div>
+                        <ul class="text-xs text-slate-700 space-y-2.5 leading-relaxed">
+                            <li class="flex items-start gap-2">
+                                <span class="text-emerald-600 font-bold">•</span>
+                                <span><strong>최적의 수면 효율:</strong> 눕는 즉시 빠른 잠복기 진입 및 상쾌한 아침 기상.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-emerald-600 font-bold">•</span>
+                                <span><strong>대사 기능 원활:</strong> 장기 말초 시계와 뇌 주시계가 일치하여 혈당 조절 및 체지방 대사 최적화.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-emerald-600 font-bold">•</span>
+                                <span><strong>뇌 독소 청소:</strong> 수면 중 뇌척수액 순환이 활성화되어 뇌 신경 노폐물 효과적 배출.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-emerald-600 font-bold">•</span>
+                                <span><strong>인지 능력 및 인지 지속성:</strong> 낮 시간 코르티솔 분비 정상화로 높은 집중력과 안정된 감정 상태 유지.</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                </div>
+
+                <!-- Scientific References & Papers -->
+                <div class="p-6 bg-slate-100/90 rounded-2xl border border-slate-300 space-y-4">
+                    <div class="flex items-center gap-2 text-slate-900 font-bold text-base border-b border-slate-300 pb-3">
+                        <i data-lucide="book-open" class="w-5 h-5 text-cyan-700"></i>
+                        <span>심화 학습: 대표 연구 논문 &amp; 공식 학술 출처</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        생체시계의 분자생물학적 원리와 광 반응성, 수면 메커니즘에 대해 더 자세히 알아볼 수 있는 검증된 국제 학술 자료 및 국립 연구 기관 링크입니다.
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
+                        <!-- Nobel Prize Link -->
+                        <a href="https://www.nobelprize.org/prizes/medicine/2017/press-release/" target="_blank" rel="noopener noreferrer" 
+                           class="p-3.5 bg-white rounded-xl border border-slate-200 hover:border-cyan-500 hover:shadow-sm transition flex flex-col justify-between group">
+                            <div>
+                                <div class="flex items-center justify-between gap-1 font-bold text-slate-800 group-hover:text-cyan-700 mb-1">
+                                    <span class="flex items-center gap-1.5"><i data-lucide="award" class="w-4 h-4 text-amber-500"></i> 2017 노벨 생리의학상 공식 발표</span>
+                                    <i data-lucide="external-link" class="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-600"></i>
+                                </div>
+                                <p class="text-[11px] text-slate-500 leading-snug">생체시계 제어 유전자(PER, CRY) 및 분자 메커니즘 규명 (NobelPrize.org)</p>
+                            </div>
+                        </a>
+
+                        <!-- NIH Link -->
+                        <a href="https://www.nigms.nih.gov/education/fact-sheets/Pages/circadian-rhythms.aspx" target="_blank" rel="noopener noreferrer" 
+                           class="p-3.5 bg-white rounded-xl border border-slate-200 hover:border-cyan-500 hover:shadow-sm transition flex flex-col justify-between group">
+                            <div>
+                                <div class="flex items-center justify-between gap-1 font-bold text-slate-800 group-hover:text-cyan-700 mb-1">
+                                    <span class="flex items-center gap-1.5"><i data-lucide="building-2" class="w-4 h-4 text-cyan-600"></i> 미국 국립보건원 (NIH / NIGMS)</span>
+                                    <i data-lucide="external-link" class="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-600"></i>
+                                </div>
+                                <p class="text-[11px] text-slate-500 leading-snug">서카디안 리듬 및 생체시계 생물학 공식 교육 팩트시트</p>
+                            </div>
+                        </a>
+
+                        <!-- PubMed Link -->
+                        <a href="https://pubmed.ncbi.nlm.nih.gov/1791996/" target="_blank" rel="noopener noreferrer" 
+                           class="p-3.5 bg-white rounded-xl border border-slate-200 hover:border-cyan-500 hover:shadow-sm transition flex flex-col justify-between group">
+                            <div>
+                                <div class="flex items-center justify-between gap-1 font-bold text-slate-800 group-hover:text-cyan-700 mb-1">
+                                    <span class="flex items-center gap-1.5"><i data-lucide="file-text" class="w-4 h-4 text-indigo-600"></i> PubMed: 인간 위상 반응 연구</span>
+                                    <i data-lucide="external-link" class="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-600"></i>
+                                </div>
+                                <p class="text-[11px] text-slate-500 leading-snug">A human phase-response curve to light (빛 노출에 따른 생체시계 위상 변화 논문)</p>
+                            </div>
+                        </a>
+
+                        <!-- National Sleep Foundation Link -->
+                        <a href="https://www.thensf.org/what-is-a-circadian-rhythm/" target="_blank" rel="noopener noreferrer" 
+                           class="p-3.5 bg-white rounded-xl border border-slate-200 hover:border-cyan-500 hover:shadow-sm transition flex flex-col justify-between group">
+                            <div>
+                                <div class="flex items-center justify-between gap-1 font-bold text-slate-800 group-hover:text-cyan-700 mb-1">
+                                    <span class="flex items-center gap-1.5"><i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i> 미국 수면재단 (NSF)</span>
+                                    <i data-lucide="external-link" class="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-600"></i>
+                                </div>
+                                <p class="text-[11px] text-slate-500 leading-snug">Understanding Circadian Rhythms (수면 장애와 수면 주기의 가이드라인)</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Navigation to Step 5 -->
+                <div class="flex items-center justify-between pt-4">
+                    <button type="button" onclick="goToStep(3)" class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600 font-medium text-sm hover:bg-slate-100 transition">
+                        이전 (시계 비교)
+                    </button>
+                    <button type="button" onclick="goToStep(5)" class="px-8 py-3 bg-cyan-700 hover:bg-cyan-800 text-white font-bold text-sm rounded-xl shadow-md shadow-cyan-700/20 flex items-center gap-2 transition cursor-pointer">
+                        <span>맞춤형 생체리듬 솔루션 보기</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- STEP 5: Solutions and Reset Guide -->
+        <section id="step-5" class="step-view">
+            <div class="lab-card rounded-2xl p-6 md:p-8 max-w-4xl mx-auto space-y-8">
+                
+                <div class="text-center max-w-2xl mx-auto">
+                    <span class="text-xs font-mono font-semibold uppercase tracking-wider text-cyan-600 bg-cyan-50 px-2.5 py-1 rounded">Step 05 / Optimization Guide</span>
+                    <h2 class="text-2xl md:text-3xl font-bold text-slate-900 mt-2">맞춤형 생체리듬 동기화 처방전</h2>
+                    <p class="text-sm text-slate-600 mt-2">
+                        실제 시계와 어긋난 생체시계는 단순한 의지 문제가 아닌 <strong class="text-cyan-800">생체 자이트게버(Zeitgeber, 시간 제어 자극)</strong>를 통해 과학적으로 교정할 수 있습니다.
+                    </p>
+                    <p class="text-xs text-slate-500 mt-3 font-mono bg-cyan-50/80 p-2 rounded-lg border border-cyan-100 inline-block">
+                        💡 입력된 습관의 개선 시급도와 주시계 영향도에 따라 <span class="text-cyan-800 font-bold">우선순위(Priority 1위~4위)</span> 순으로 정렬되었습니다.
+                    </p>
+                </div>
+
+                <!-- Solution Cards Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="solution-cards-container">
+                    <!-- Javascript will populate custom recommendations based on user inputs -->
+                </div>
+
+                <!-- Lab Protocol Summary: Multi-Level Routines -->
+                <div class="bg-slate-900 text-slate-200 p-6 rounded-2xl border border-slate-700 space-y-5">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                        <div class="flex items-center gap-3 text-cyan-400 font-bold text-base">
+                            <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                            <span>난이도별 맞춤 생체리듬 리셋 루틴</span>
+                        </div>
+                        <!-- Difficulty Selector Tabs -->
+                        <div class="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                            <button id="routine-tab-btn-1" onclick="selectRoutineTab(1)" class="routine-tab-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 bg-cyan-600 text-white border border-cyan-500">
+                                <span>⭐ Level 1 (쉬움)</span>
+                            </button>
+                            <button id="routine-tab-btn-2" onclick="selectRoutineTab(2)" class="routine-tab-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200">
+                                <span>⭐⭐ Level 2 (중급)</span>
+                            </button>
+                            <button id="routine-tab-btn-3" onclick="selectRoutineTab(3)" class="routine-tab-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200">
+                                <span>⭐⭐⭐ Level 3 (상급)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Level 1: Easy Routine -->
+                    <div id="routine-level-1" class="routine-content space-y-3">
+                        <div class="flex items-center justify-between bg-emerald-950/50 p-3 rounded-xl border border-emerald-800/60 text-emerald-300 text-xs font-semibold">
+                            <span>🌱 초보자를 위한 3-Point 라이트 루틴</span>
+                            <span class="bg-emerald-800/60 px-2 py-0.5 rounded text-[11px] font-mono">난이도: 하 (달성률 90%)</span>
+                        </div>
+                        <ul class="text-xs md:text-sm text-slate-300 space-y-2.5">
+                            <li class="flex items-start gap-2 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="font-bold text-emerald-400 font-mono shrink-0">01.</span>
+                                <div><strong>아침 10분 창가 햇빛:</strong> 기상 직후 창문을 열고 10분간 자연광 받아 멜라토닌 리셋 시작하기.</div>
+                            </li>
+                            <li class="flex items-start gap-2 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="font-bold text-emerald-400 font-mono shrink-0">02.</span>
+                                <div><strong>오후 3시 카페인 Cut-off:</strong> 오후 3시 이후에는 커피, 에너지드링크 대신 따뜻한 물이나 허브티로 전환.</div>
+                            </li>
+                            <li class="flex items-start gap-2 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="font-bold text-emerald-400 font-mono shrink-0">03.</span>
+                                <div><strong>취침 30분 전 스마트폰 밝기 50% 다운:</strong> 야간 모드 적용 및 필터 활성화로 최소한의 블루라이트 차단.</div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Level 2: Medium Routine (Default Standard) -->
+                    <div id="routine-level-2" class="routine-content space-y-3 hidden">
+                        <div class="flex items-center justify-between bg-cyan-950/50 p-3 rounded-xl border border-cyan-800/60 text-cyan-300 text-xs font-semibold">
+                            <span>⚡ 표준 동기화 5-Point 권장 루틴</span>
+                            <span class="bg-cyan-800/60 px-2 py-0.5 rounded text-[11px] font-mono">난이도: 중 (추천 솔루션)</span>
+                        </div>
+                        <ul class="text-xs md:text-sm text-slate-300 space-y-2.5">
+                            <li class="flex items-start gap-2 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="font-bold text-cyan-400 font-mono shrink-0">AM 07:30</span>
+                                <div><strong>야외 산책 광치료 (20분):</strong> 야외 산책으로 시교차 상핵(SCN) 메인 타이머 리셋.</div>
+                            </li>
+                            <li class="flex items-start gap-2 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="font-bold text-cyan-400 font-mono shrink-0">PM 01:30</span>
+                                <div><strong>카페인 차단 마감:</strong> 카페인 반감기(6시간) 고려하여 점심 이후 카페인 전면 금지.</div>
+                            </li>
+                            <li class="flex items-start gap-2 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="font-bold text-cyan-400 font-mono shrink-0">PM 07:30</span>
+                                <div><strong>저녁 식사 마감 (12시간 공복):</strong> 소화기계 말초 생체시계 밤 모드 전환 및 야식 금지.</div>
+                            </li>
+                            <li class="flex items-start gap-2 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="font-bold text-cyan-400 font-mono shrink-0">PM 10:00</span>
+                                <div><strong>조도 50% 조율 & 체온 완화:</strong> 실내 주황색 간접 조명 전환 및 따뜻한 족욕.</div>
+                            </li>
+                            <li class="flex items-start gap-2 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="font-bold text-cyan-400 font-mono shrink-0">PM 11:00</span>
+                                <div><strong>디바이스 오프 & 수면 환경 조정:</strong> 침실 온도 18~20℃ 유지 및 전자기기 차단.</div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Level 3: Hard / Master Routine -->
+                    <div id="routine-level-3" class="routine-content space-y-3 hidden">
+                        <div class="flex items-center justify-between bg-indigo-950/50 p-3 rounded-xl border border-indigo-800/60 text-indigo-300 text-xs font-semibold">
+                            <span>🔥 하드코어 7-Point 마스터 리셋 루틴</span>
+                            <span class="bg-indigo-800/60 px-2 py-0.5 rounded text-[11px] font-mono">난이도: 상 (3일 집중 리셋)</span>
+                        </div>
+                        <ul class="text-xs md:text-sm text-slate-300 space-y-2.5">
+                            <li class="flex items-start gap-2 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="font-bold text-indigo-400 font-mono shrink-0">AM 07:00</span>
+                                <div><strong>고조도 광치료(30분) + 단백질 식사:</strong> 자연광 30분 쬐기 및 멜라토닌 원료(트립토판) 아침 섭취.</div>
+                            </li>
+                            <li class="flex items-start gap-2 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="font-bold text-indigo-400 font-mono shrink-0">AM 11:00</span>
+                                <div><strong>주간 유산소 신체 활동 (30분):</strong> 낮 시간 햇빛 수용량 증대 및 아데노신 압력 축적.</div>
+                            </li>
+                            <li class="flex items-start gap-2 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="font-bold text-indigo-400 font-mono shrink-0">PM 12:00</span>
+                                <div><strong>카페인 전면 차단 (100% 디카페인):</strong> 생체시계 지연 요인 완벽 제거.</div>
+                            </li>
+                            <li class="flex items-start gap-2 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="font-bold text-indigo-400 font-mono shrink-0">PM 07:00</span>
+                                <div><strong>14시간 시간제한 단식(TRE) 마감:</strong> 장기 말초 생체시계 강제 동기화.</div>
+                            </li>
+                            <li class="flex items-start gap-2 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="font-bold text-indigo-400 font-mono shrink-0">PM 09:30</span>
+                                <div><strong>심부체온 하강을 위한 입욕/반신욕:</strong> 입욕 후 체온이 급격히 떨어지는 메커니즘 활용.</div>
+                            </li>
+                            <li class="flex items-start gap-2 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="font-bold text-indigo-400 font-mono shrink-0">PM 10:00</span>
+                                <div><strong>디지털 디바이스 아웃 (노 스크린):</strong> 스마트폰/TV 완벽 셧다운 및 붉은색 보조등만 사용.</div>
+                            </li>
+                            <li class="flex items-start gap-2 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="font-bold text-indigo-400 font-mono shrink-0">PM 10:30</span>
+                                <div><strong>침실 암막 100% & 적정 온도 조절:</strong> 멜라토닌 분비극대화를 위한 완전 암전 환경.</div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Reset Button -->
+                <div class="flex justify-center pt-4">
+                    <button onclick="goToStep(1)" class="px-8 py-3.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm rounded-xl shadow transition flex items-center gap-2">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        <span>처음부터 다시 시뮬레이션하기</span>
+                    </button>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal: 24-Hour Circadian Rhythm Curve Graph -->
+    <div id="curve-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="lab-card bg-white rounded-2xl max-w-3xl w-full p-6 md:p-8 space-y-6 relative shadow-2xl">
+            <button onclick="hideCurveModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+
+            <div>
+                <div class="flex items-center gap-2 text-cyan-700 font-bold text-sm mb-1">
+                    <i data-lucide="activity" class="w-4 h-4"></i> 24시간 자율신경 & 호르몬 위상 곡선
+                </div>
+                <h3 class="text-xl font-bold text-slate-900">표준 생체리듬 vs 내 생체리듬 비교</h3>
+                <p class="text-xs text-slate-500 mt-1">멜라토닌 분비와 체온 각성 리듬의 파동 그래프 차이를 나타냅니다.</p>
+            </div>
+
+            <!-- Chart Canvas Container -->
+            <div class="w-full h-64 md:h-80 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <canvas id="rhythmChart"></canvas>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-xs">
+                <div class="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div class="font-bold text-blue-900 flex items-center gap-1.5">
+                        <span class="w-3 h-1 bg-blue-600 rounded"></span> 표준 시계 리듬 (Ideal)
+                    </div>
+                    <p class="text-slate-600 mt-1">야간 멜라토닌 피크(02~03시)와 아침 코르티솔 분비 반응이 정확히 작동함.</p>
+                </div>
+                <div class="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                    <div class="font-bold text-amber-900 flex items-center gap-1.5">
+                        <span class="w-3 h-1 bg-amber-500 rounded"></span> 내 생체시계 리듬 (Current)
+                    </div>
+                    <p class="text-slate-600 mt-1">위상 지연 또는 진폭 저하로 인해 아침 피로감과 야간 수면 잠복기가 증가함.</p>
+                </div>
+            </div>
+
+            <div class="text-right">
+                <button onclick="hideCurveModal()" class="px-5 py-2.5 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900 transition">
+                    창 닫기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="w-full bg-slate-100 border-t border-slate-200 py-4 mt-8">
+        <div class="max-w-6xl mx-auto px-4 text-center text-xs text-slate-500 font-mono">
+            Circadian Biology Simulation Lab &copy; 2026. All rights reserved. (No External Images Used)
+        </div>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        /* Global State Variables */
+        let currentStep = 1;
+        let calculatedPhaseShiftMinutes = 0; // Negative = advanced, Positive = delayed
+        let rhythmChartInstance = null;
+        let melatoninChartInstance = null;
+        let cortisolChartInstance = null;
+
+        /* Fine-grained minute adjustment helper */
+        function adjustLight(inputId, delta) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            let val = parseInt(input.value) || 0;
+            val = Math.max(parseInt(input.min), Math.min(parseInt(input.max), val + delta));
+            input.value = val;
+            document.getElementById(inputId + 'Val').innerText = val + '분';
+        }
+
+        // Initialize Lucide Icons & Clock on Load
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            startLiveHeaderClock();
+            drawClock('standardClockCanvas', 14, 0);
+            drawClock('bioClockCanvas', 15, 45);
+        });
+
+        /* Navigation Control */
+        function goToStep(step) {
+            document.querySelectorAll('.step-view').forEach(el => el.classList.remove('active'));
+            const target = document.getElementById(`step-${step}`);
+            if (target) {
+                target.classList.add('active');
+                currentStep = step;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+
+                // Render hormone mini charts if navigating to step 4
+                if (step === 4) {
+                    setTimeout(renderHormoneMiniCharts, 50);
+                }
+            }
+        }
+
+        /* Real-time Header Clock */
+        function startLiveHeaderClock() {
+            const timeEl = document.getElementById('live-time-display');
+            setInterval(() => {
+                const now = new Date();
+                timeEl.innerText = now.toTimeString().split(' ')[0];
+            }, 1000);
+        }
+
+        /* Canvas Clock Rendering Engine (No External Images) */
+        function drawClock(canvasId, hours, minutes) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const radius = canvas.width / 2;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Dial Face
+            ctx.beginPath();
+            ctx.arc(radius, radius, radius - 8, 0, 2 * Math.PI);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.stroke();
+
+            // Hour Ticks
+            for (let num = 1; num <= 12; num++) {
+                const ang = num * Math.PI / 6;
+                ctx.rotate(ang);
+                ctx.translate(0, -radius + 20);
+                ctx.rotate(-ang);
+                ctx.beginPath();
+                ctx.arc(radius, radius, 2, 0, 2 * Math.PI);
+                ctx.fillStyle = '#94a3b8';
+                ctx.fill();
+                ctx.rotate(ang);
+                ctx.translate(0, radius - 20);
+                ctx.rotate(-ang);
+            }
+
+            // Calculate Angles
+            const hourAngle = ((hours % 12) + minutes / 60) * (Math.PI / 6);
+            const minuteAngle = (minutes) * (Math.PI / 30);
+
+            // Hour Hand
+            drawHand(ctx, radius, hourAngle, radius * 0.45, 6, '#1e293b');
+            // Minute Hand
+            drawHand(ctx, radius, minuteAngle, radius * 0.7, 3.5, '#0284c7');
+
+            // Center Pin
+            ctx.beginPath();
+            ctx.arc(radius, radius, 6, 0, 2 * Math.PI);
+            ctx.fillStyle = '#0f172a';
+            ctx.fill();
+        }
+
+        function drawHand(ctx, center, angle, length, width, color) {
+            ctx.beginPath();
+            ctx.lineWidth = width;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = color;
+            ctx.moveTo(center, center);
+            ctx.lineTo(center + length * Math.sin(angle), center - length * Math.cos(angle));
+            ctx.stroke();
+        }
+
+        /* Calculate Biological Clock Shift Logic */
+        function processAnalysis() {
+            const sleepTimeStr = document.getElementById('sleepTime').value;
+            const wakeTimeStr = document.getElementById('wakeTime').value;
+            const morningLight = parseInt(document.getElementById('morningLight').value);
+            const nightLight = parseInt(document.getElementById('nightLight').value);
+            const lateSnack = document.getElementById('lateSnack').value;
+            const caffeine = document.querySelector('input[name="caffeine"]:checked').value;
+            const roomTemp = document.getElementById('roomTemp').value;
+
+            // Algorithm for Circadian Phase Shift Calculation (in Minutes)
+            let phaseShift = 0;
+
+            // 1. Light Effect (Morning light advances, Night light delays)
+            if (morningLight < 20) phaseShift += 30; // Lack of morning sun delays phase
+            else if (morningLight >= 45) phaseShift -= 20; // Sun pulls clock earlier
+
+            if (nightLight > 30) phaseShift += Math.min(90, (nightLight - 30) * 0.6); // Night light suppresses melatonin
+
+            // 2. Late Sleep & Wake Time
+            const [sHour, sMin] = sleepTimeStr.split(':').map(Number);
+            const sleepVal = sHour + sMin / 60;
+            if (sleepVal > 24 || sleepVal < 4) { // Slept after midnight
+                phaseShift += 40;
+            }
+
+            // 3. Late Snacks
+            if (lateSnack === 'light') phaseShift += 25;
+            if (lateSnack === 'heavy') phaseShift += 50;
+
+            // 4. Caffeine Intake
+            if (caffeine === 'moderate') phaseShift += 30;
+            if (caffeine === 'high') phaseShift += 60;
+
+            // 5. Room Temperature
+            if (roomTemp === 'warm') phaseShift += 20;
+
+            calculatedPhaseShiftMinutes = Math.round(phaseShift);
+
+            // Update Clocks Display
+            const now = new Date();
+            const currentHours = now.getHours();
+            const currentMins = now.getMinutes();
+
+            // Render Standard Clock (Current Time)
+            const stdHours = currentHours;
+            const stdMins = currentMins;
+            document.getElementById('standard-digital-time').innerText = 
+                `${String(stdHours).padStart(2, '0')}:${String(stdMins).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+            drawClock('standardClockCanvas', stdHours, stdMins);
+
+            // Render Bio Clock (Current Time + Shift)
+            let bioTotalMins = (stdHours * 60 + stdMins) + calculatedPhaseShiftMinutes;
+            if (bioTotalMins < 0) bioTotalMins += 1440;
+            bioTotalMins = bioTotalMins % 1440;
+
+            const bioHours = Math.floor(bioTotalMins / 60);
+            const bioMins = bioTotalMins % 60;
+
+            document.getElementById('bio-digital-time').innerText = 
+                `${String(bioHours).padStart(2, '0')}:${String(bioMins).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+            drawClock('bioClockCanvas', bioHours, bioMins);
+
+            // Render Text Diagnosis
+            const badge = document.getElementById('phase-shift-badge');
+            const title = document.getElementById('phase-shift-title');
+            const desc = document.getElementById('phase-shift-description');
+
+            const absShiftMinutes = Math.abs(calculatedPhaseShiftMinutes);
+            const shiftHours = Math.floor(absShiftMinutes / 60);
+            const shiftRemainingMins = absShiftMinutes % 60;
+
+            // 동기화 점수 계산 (100점 만점 기준)
+            const syncScore = Math.max(0, Math.min(100, Math.round(100 - (absShiftMinutes * 0.5))));
+            const scoreBadge = document.getElementById('sync-score-badge');
+            const scoreBar = document.getElementById('sync-score-bar');
+            
+            if (scoreBadge && scoreBar) {
+                scoreBadge.innerText = `동기화 점수: ${syncScore}점 / 100점`;
+                scoreBar.style.width = `${syncScore}%`;
+                
+                if (syncScore >= 80) {
+                    scoreBadge.className = "px-3 py-1 rounded-full text-xs font-extrabold font-mono bg-emerald-100 text-emerald-900 border border-emerald-300";
+                    scoreBar.className = "bg-emerald-500 h-2.5 rounded-full transition-all duration-500";
+                } else if (syncScore >= 50) {
+                    scoreBadge.className = "px-3 py-1 rounded-full text-xs font-extrabold font-mono bg-amber-100 text-amber-900 border border-amber-300";
+                    scoreBar.className = "bg-amber-500 h-2.5 rounded-full transition-all duration-500";
+                } else {
+                    scoreBadge.className = "px-3 py-1 rounded-full text-xs font-extrabold font-mono bg-rose-100 text-rose-900 border border-rose-300";
+                    scoreBar.className = "bg-rose-500 h-2.5 rounded-full transition-all duration-500";
+                }
+            }
+
+            let shiftStr = "";
+            if (shiftHours > 0) shiftStr += `${shiftHours}시간 `;
+            shiftStr += `${shiftRemainingMins}분`;
+
+            if (calculatedPhaseShiftMinutes > 0) {
+                badge.innerText = `+${shiftStr} 지연됨`;
+                badge.className = "px-3 py-1 rounded-full text-xs font-bold font-mono bg-amber-100 text-amber-800 border border-amber-300";
+                title.innerText = `내 생체시계가 ${shiftStr} 뒤쳐져 있습니다 (야행성 지연)`;
+                desc.innerHTML = `현재 입력한 야간 빛 노출, 카페인, 야식 및 기상 패턴으로 인해 뇌 시교차 상핵(SCN)의 생체 시계가 실제 시간보다 <strong class="text-amber-700">${shiftStr} 뒤로 밀려난 상태</strong>입니다. 이로 인해 밤에 잠들기 어렵고 아침 기상 시 주간 피로감(수면 관성)이 발생할 수 있습니다.`;
+            } else if (calculatedPhaseShiftMinutes < 0) {
+                badge.innerText = `-${shiftStr} 앞섬`;
+                badge.className = "px-3 py-1 rounded-full text-xs font-bold font-mono bg-sky-100 text-sky-800 border border-sky-300";
+                title.innerText = `내 생체시계가 ${shiftStr} 당겨져 있습니다 (아침형 당김)`;
+                desc.innerHTML = `아침 광선 자극과 규칙적인 수면 패턴으로 생체시계가 실제 표준시보다 <strong class="text-cyan-700">${shiftStr} 당겨진 상태</strong>입니다. 저녁 일찍 졸음이 오고 새벽에 일찍 깨어나는 경향을 보일 수 있습니다.`;
+            } else {
+                badge.innerText = `정확히 일치함`;
+                badge.className = "px-3 py-1 rounded-full text-xs font-bold font-mono bg-emerald-100 text-emerald-800 border border-emerald-300";
+                title.innerText = "생체시계가 실제 시계와 완전히 일치합니다!";
+                desc.innerHTML = `축하합니다! 빛 노출, 수면 시간, 식사 타임이 자율신경계 및 멜라토닌/코르티솔 주기와 완벽하게 동기화되어 최적의 에너지를 발휘하는 상태입니다.`;
+            }
+
+            // Populate Custom Solutions for Step 5
+            populateSolutions(morningLight, nightLight, lateSnack, caffeine);
+
+            // Go to Step 3
+            goToStep(3);
+        }
+
+        /* Render Mini Comparison Curves for Melatonin & Cortisol in Step 4 */
+        function renderHormoneMiniCharts() {
+            const shiftHours = calculatedPhaseShiftMinutes / 60;
+            const hourLabels = ['00h', '03h', '06h', '09h', '12h', '15h', '18h', '21h', '24h'];
+            const hourPoints = [0, 3, 6, 9, 12, 15, 18, 21, 24];
+
+            // Get user habits for curve suppression
+            const nightLightEl = document.getElementById('nightLight');
+            const nightLight = nightLightEl ? parseInt(nightLightEl.value) : 60;
+            const morningLightEl = document.getElementById('morningLight');
+            const morningLight = morningLightEl ? parseInt(morningLightEl.value) : 15;
+
+            // Melatonin Suppression factor based on night light
+            const melSuppression = Math.max(0.45, 1 - (nightLight / 320));
+            // Cortisol CAR Peak factor based on morning light
+            const corPeakFactor = morningLight < 20 ? 0.65 : 1.0;
+
+            // 1. Melatonin Curves (Standard vs Bio)
+            const stdMel = hourPoints.map(h => {
+                const diff = Math.min(Math.abs(h - 2.5), Math.abs(h - 2.5 + 24), Math.abs(h - 2.5 - 24));
+                return Math.max(2, Math.round(100 * Math.exp(-Math.pow(diff / 3.5, 2))));
+            });
+
+            const userMel = hourPoints.map(h => {
+                const userPeak = (2.5 + shiftHours + 24) % 24;
+                const diff = Math.min(Math.abs(h - userPeak), Math.abs(h - userPeak + 24), Math.abs(h - userPeak - 24));
+                return Math.max(2, Math.round(100 * melSuppression * Math.exp(-Math.pow(diff / 3.5, 2))));
+            });
+
+            // 2. Cortisol Curves (Standard vs Bio)
+            const stdCor = hourPoints.map(h => {
+                const diff = Math.min(Math.abs(h - 7.5), Math.abs(h - 7.5 + 24), Math.abs(h - 7.5 - 24));
+                return Math.max(8, Math.round(100 * Math.exp(-Math.pow(diff / 3.8, 2))));
+            });
+
+            const userCor = hourPoints.map(h => {
+                const userPeak = (7.5 + shiftHours + 24) % 24;
+                const diff = Math.min(Math.abs(h - userPeak), Math.abs(h - userPeak + 24), Math.abs(h - userPeak - 24));
+                return Math.max(8, Math.round(100 * corPeakFactor * Math.exp(-Math.pow(diff / 3.8, 2))));
+            });
+
+            // Render Melatonin Mini Chart
+            const melCtx = document.getElementById('melatoninMiniChart');
+            if (melCtx) {
+                if (melatoninChartInstance) melatoninChartInstance.destroy();
+                melatoninChartInstance = new Chart(melCtx, {
+                    type: 'line',
+                    data: {
+                        labels: hourLabels,
+                        datasets: [
+                            {
+                                label: '정상 멜라토닌 분비량',
+                                data: stdMel,
+                                borderColor: '#818cf8',
+                                borderWidth: 2,
+                                tension: 0.4,
+                                pointRadius: 0
+                            },
+                            {
+                                label: '내 생체 멜라토닌',
+                                data: userMel,
+                                borderColor: '#f43f5e',
+                                borderDash: [3, 3],
+                                borderWidth: 2,
+                                tension: 0.4,
+                                pointRadius: 0
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { color: '#cbd5e1', font: { size: 10, family: 'Inter' }, boxWidth: 10, padding: 6 }
+                            }
+                        },
+                        scales: {
+                            x: { ticks: { color: '#94a3b8', font: { size: 9, family: 'JetBrains Mono' } }, grid: { display: false } },
+                            y: { display: false, min: 0, max: 110 }
+                        }
+                    }
+                });
+            }
+
+            // Render Cortisol Mini Chart
+            const corCtx = document.getElementById('cortisolMiniChart');
+            if (corCtx) {
+                if (cortisolChartInstance) cortisolChartInstance.destroy();
+                cortisolChartInstance = new Chart(corCtx, {
+                    type: 'line',
+                    data: {
+                        labels: hourLabels,
+                        datasets: [
+                            {
+                                label: '정상 코르티솔 분비량',
+                                data: stdCor,
+                                borderColor: '#fbbf24',
+                                borderWidth: 2,
+                                tension: 0.4,
+                                pointRadius: 0
+                            },
+                            {
+                                label: '내 생체 코르티솔',
+                                data: userCor,
+                                borderColor: '#f43f5e',
+                                borderDash: [3, 3],
+                                borderWidth: 2,
+                                tension: 0.4,
+                                pointRadius: 0
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { color: '#cbd5e1', font: { size: 10, family: 'Inter' }, boxWidth: 10, padding: 6 }
+                            }
+                        },
+                        scales: {
+                            x: { ticks: { color: '#94a3b8', font: { size: 9, family: 'JetBrains Mono' } }, grid: { display: false } },
+                            y: { display: false, min: 0, max: 110 }
+                        }
+                    }
+                });
+            }
+        }
+
+        /* Tab Switcher for Multi-Level Routines */
+        function selectRoutineTab(level) {
+            document.querySelectorAll('.routine-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.routine-tab-btn').forEach(btn => {
+                btn.className = "routine-tab-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200";
+            });
+
+            const selectedContent = document.getElementById(`routine-level-${level}`);
+            if (selectedContent) {
+                selectedContent.classList.remove('hidden');
+            }
+
+            const activeBtn = document.getElementById(`routine-tab-btn-${level}`);
+            if (activeBtn) {
+                activeBtn.className = "routine-tab-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 bg-cyan-600 text-white border border-cyan-500 shadow-sm";
+            }
+        }
+
+        /* Render Solutions dynamically based on user parameters & priority score */
+        function populateSolutions(morningLight, nightLight, lateSnack, caffeine) {
+            const container = document.getElementById('solution-cards-container');
+            container.innerHTML = '';
+
+            // Calculate priorities dynamically based on user inputs & Zeitgeber impact
+            const solutions = [
+                {
+                    id: 'morning',
+                    title: "아침 광치료 (Light Therapy)",
+                    icon: "sun",
+                    impactText: "뇌 주시계(SCN) 리셋 자극 (영향도 45%)",
+                    priorityScore: (morningLight < 30 ? 100 : 40),
+                    condition: morningLight < 30,
+                    text: `현재 아침 햇빛 노출시간(${morningLight}분)이 부족합니다. 기상 후 30분 이내에 최소 20~30분간 야외 산책이나 베란다 햇빛을 쬐어 뇌의 생체시계 메인 타이머를 리셋하세요.`
+                },
+                {
+                    id: 'night',
+                    title: "야간 블루라이트 컷오프",
+                    icon: "smartphone-off",
+                    impactText: "멜라토닌 분비 차단 해제 (영향도 30%)",
+                    priorityScore: (nightLight > 40 ? 90 : 35),
+                    condition: nightLight > 40,
+                    text: `취침 전 약 ${nightLight}분간 노출되는 화면 빛이 멜라토닌 합성을 최고 50%까지 억제합니다. 취침 1시간 전 스마트폰을 멀리하거나 야간 모드 및 조도 낮추기를 실행하세요.`
+                },
+                {
+                    id: 'meal',
+                    title: "말초 생체시계 리셋 (식사 타임)",
+                    icon: "utensils",
+                    impactText: "소화기계 말초시계 동기화 (영향도 15%)",
+                    priorityScore: (lateSnack !== 'none' ? 80 : 25),
+                    condition: lateSnack !== 'none',
+                    text: "야식은 간, 위장의 말초 시계를 낮으로 착각하게 만듭니다. 저녁 식사는 취침 최소 4시간 전에 마치고 12시간 공복을 유지해 장기 시계를 교정하세요."
+                },
+                {
+                    id: 'caffeine',
+                    title: "카페인 수용체 관리",
+                    icon: "coffee",
+                    impactText: "아데노신 각성 지연 억제 (영향도 10%)",
+                    priorityScore: (caffeine !== 'none' ? 70 : 15),
+                    condition: caffeine !== 'none',
+                    text: "오후 2시 이후 카페인은 생체시계 주기를 평균 40분 뒤로 지연시킵니다. 오후에는 카페인이 없는 따뜻한 차나 물로 전환하세요."
+                }
+            ];
+
+            // Sort solutions by calculated priority score descending
+            solutions.sort((a, b) => b.priorityScore - a.priorityScore);
+
+            solutions.forEach((sol, index) => {
+                const priorityRank = index + 1;
+                let priorityLabel = "";
+                let badgeClass = "";
+
+                if (priorityRank === 1) {
+                    priorityLabel = "우선순위 1위 (최우선 실행)";
+                    badgeClass = "bg-rose-600 text-white font-bold";
+                } else if (priorityRank === 2) {
+                    priorityLabel = "우선순위 2위 (필수 실천)";
+                    badgeClass = "bg-amber-600 text-white font-bold";
+                } else if (priorityRank === 3) {
+                    priorityLabel = "우선순위 3위 (권장 실천)";
+                    badgeClass = "bg-emerald-600 text-white font-semibold";
+                } else {
+                    priorityLabel = "우선순위 4위 (보조 관리)";
+                    badgeClass = "bg-slate-600 text-white font-medium";
+                }
+
+                const card = document.createElement('div');
+                card.className = "p-5 bg-slate-50/80 rounded-xl border border-slate-200 flex flex-col justify-between relative overflow-hidden transition hover:border-cyan-400";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                            <span class="text-[11px] px-2.5 py-0.5 rounded-full ${badgeClass} font-mono tracking-tight shadow-sm">
+                                ${priorityLabel}
+                            </span>
+                            <span class="text-[11px] text-slate-500 font-mono">${sol.impactText}</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-slate-900 font-bold mb-2">
+                            <i data-lucide="${sol.icon}" class="w-5 h-5 text-cyan-700"></i>
+                            <span>${sol.title}</span>
+                        </div>
+                        <p class="text-xs text-slate-600 leading-relaxed">${sol.text}</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-cyan-800 font-semibold">
+                        <span>실천 강도: ${priorityRank === 1 ? '매일 즉시 실천' : '규칙적 유지'}</span>
+                        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            lucide.createIcons();
+        }
+
+        /* 24-Hour Rhythm Curve Chart Modal Functions */
+        function showCurveModal() {
+            document.getElementById('curve-modal').classList.remove('hidden');
+            renderRhythmChart();
+        }
+
+        function hideCurveModal() {
+            document.getElementById('curve-modal').classList.add('hidden');
+        }
+
+        function renderRhythmChart() {
+            const ctx = document.getElementById('rhythmChart').getContext('2d');
+
+            if (rhythmChartInstance) {
+                rhythmChartInstance.destroy();
+            }
+
+            const hours = Array.from({ length: 25 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
+
+            // Standard ideal melatonin/body temp curve
+            const idealCurve = hours.map((_, i) => {
+                const val = Math.sin((i - 8) * (2 * Math.PI / 24));
+                return Math.round((val + 1) * 50);
+            });
+
+            // Shifted user curve based on calculated phase shift
+            const shiftHoursFloat = calculatedPhaseShiftMinutes / 60;
+            const userCurve = hours.map((_, i) => {
+                const val = Math.sin((i - 8 - shiftHoursFloat) * (2 * Math.PI / 24));
+                return Math.round((val + 1) * 45 + 5);
+            });
+
+            rhythmChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: hours,
+                    datasets: [
+                        {
+                            label: '표준 생체리듬 곡선 (Ideal Rhythm)',
+                            data: idealCurve,
+                            borderColor: '#0284c7',
+                            backgroundColor: 'rgba(2, 132, 199, 0.05)',
+                            borderWidth: 2.5,
+                            tension: 0.4,
+                            pointRadius: 2
+                        },
+                        {
+                            label: '내 생체시계 리듬 (User Bio Rhythm)',
+                            data: userCurve,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.05)',
+                            borderWidth: 2.5,
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(203, 213, 225, 0.4)' },
+                            ticks: { font: { size: 10 } }
+                        },
+                        y: {
+                            display: false,
+                            min: 0,
+                            max: 110
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { font: { size: 11, family: 'Inter' } }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
